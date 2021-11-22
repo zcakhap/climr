@@ -1,0 +1,215 @@
+---
+title: "Two-way Hierarchical Analysis of Variance by using Markov chain Monte Carlo (MCMC) techniques"
+author: "Yue Zhang and Paul Northrop"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Two-way Hierarchical Analysis of Variance by using Markov chain Monte Carlo (MCMC) techniques}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: climr.bib
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+The 'fit_reml' function is only applicable for the CMIP5 data containing the index, GCM and RCP; This function is also for fitting a random-effects ANOVA model and finding the standard deviations of estimators by using Markov chain Monte Carlo (MCMC) techniques to establish a Bayesian model, following @Northrop_2014.
+
+# Text to introduce the structure of the (CMIP5) data
+
+According to the description in @Taylor_2012, the CMIP5 is the fifth phase of the Coupled Model Intercomparison Project for understanding of past and future climate changes. The main experiments are long term (century time scale) integration and near-term integration (10-30 yr). In addition, there are four CMIP5 scenarios that are RCP 2.6, RCP 4.5, RCP 6.0 and RCP 8.5. However, there are some basic considerations for users of CMIP5 data, such as unforced variability and climate drift and bias correction. 
+
+The 'cmip5_temp1' data contains the mid 21st century global temperature projection data. At the same time, the 'cmip5_temp2' data contains late 21st century global temperature projection data. Both of them have 270 rows and 4 columns.Each row relates to a climate projection run from one of 38 different General Circulation Models (GCMs) under a particular Representative Concentration Pathway (RCP).Column 1 contains the anomaly of the mean global temperature between two different time period. For 'cmip5_temp1', it is the mean global temperature over the time period 2020-2049 relative to that over 1970-1999 and for 'cmip5_temp2', it is the mean global temperature over the time period 2020-2049 relative to that over 1970-1999 i.e. the latter subtracted from the former; Column 2 contains an abbreviation for the name of the climate modelling research group and the GCM; Column 3 contains the one of four RCPs; Column 4 is the simulation run number.
+
+
+```{r setup}
+library(climr)
+library(brms)
+
+# showing data that stored in the pacake (climr)
+head(cmip5_temp1)
+head(cmip5_temp2)
+```
+
+# Formula for the Two-way random-effected ANOVA model
+Suppose $Y_{ijk}$; i = 1,...,$n_{GCM}$; j = 1,...,$n_{RCP}$; and k = 1,...,$K_{ij}$ be an index of change for GCM $i$, RCP $j$ and run $k$. For the CMIP5 data, $n_{GCM}$  = 38, $n_RCP$ = 4 and $K_{ij}$ varies from 0 to 13. Here is the statistical model:
+$$Y_{ijk} = \mu + \alpha_i + \beta_j + \gamma_{ij} + \epsilon_{ijk}, $$
+$$i = 1,...,n_{GCM}, j = 1,...,n_{RCP}, k = 1,...,K_{ij},$$
+$$\alpha_i \sim N(0,\sigma_{GCM}^2), \beta_j \sim N(0,\sigma_{RCP}^2), \gamma_{ij} \sim N(0,\sigma_{GCM:RCP}^2), \epsilon_{ijk} \sim N(0,\sigma_{R}^2).$$
+
+The $\mu$ is the overall mean change in the index over all GCMs and RCPs and is the fixed effect. And the  $\alpha_i$, $\beta_j$ and $\gamma_{ij}$ are the random effects which are normally distributed with mean 0 and corresponding variance. For example, the $\alpha_i$ interprets an adjustment to GCM $i$ with variance $\sigma_{GCM}^2$; With the same notation, $\beta_j$ interprets an adjustment to RCP $j$ with variance  $\sigma_{RCP}^2$ and the $\gamma_{ij}$ interprets interaction between the GCM $i$ and RCP $j$ that also indicates a RCP-specific additional adjustment for GCM $i$ with variance $\sigma_{GCM:RCP}^2$. Then $\epsilon_{ijk}$ is the error term that is also normally distributed with mean 0 and variance $\sigma_{R}^2$, meaning the residual variability between runs which also is the variability within the modeled system. All the random variables are independent in the assumption.
+
+The parameters are  $\mu, \sigma_{GCM}, \sigma_{RCP}, \sigma_{GCM:RCP}$ and $\sigma_{R}$ that are treated as $\theta$:
+$$(\mu,\sigma_{GCM},\sigma_{RCP},\sigma_{GCM:RCP},\sigma_{R}) = \theta$$
+
+From the Bayesian analysis, the previous parameter $\theta$ is treated as a random variable. There is a prior distribution, $\pi(\theta)$, indicating the uncertainty about the $\theta$ in the absence of the data $y$, and a likelihood function, $L(\theta|y)$,indicating the probability density of $y$ in a function of $\theta$. According to the Bayesian inference, the posterior distribution, $\pi(\theta|y)$, is proportional to the production of prior distribution, $\pi(\theta)$, and likelihood function, $L(\theta|y)$ : $$\pi(\theta|y) \displaystyle \propto \pi(\theta) \times L(\theta|y) $$
+
+After dealing with the samples by the Markov Chain Monte Carlo (MCMC) techniques, these samples could make a better evaluation for the posterior distribution, e.g. mean, median and percentiles. And from @Gelman_2006 and @Northrop_2014, the prior distribution that we should choose is the half-Cauchy ($A$) distribution, as there are only limited information from the existing data. The probability density function (pdf) of the half-Cauchy ($A$) distribution is:
+$$\pi(\theta) = \frac{2}{\pi A} \left( 1 + \frac{\theta ^2}{A^2}\right)^{-1} , \theta > 0$$
+The value of $A$ would influence the posterior distribution for $\theta$ to place high probability on a realistic range. And as the $\theta$ rises, the pdf of model would decrease slowly in order to prevent an undue effects of the prior distribution from a larger data than anticipated value of $\theta$.
+
+# Explain the purpose of the Bayesian inference
+
+The data would fit in a Bayesian generalized multivariate multilevel model containing three random-effects factors which are GCM, RCP and the interaction between GCM and RCP. Their prior distributions of standard deviation are considered to be half-Cauchy distributed with parameter \code{A} that defaults to be 0.5. This is same as the prior distribution of residual, i.e. run. For the intercept, it has normal prior distribution with zero mean and \code{sd_mu} standard deviation. \code{sd_mu} defaults to be 1e6.
+
+After setting the prior distributions, we use MCMC techniques to establish a Bayesian model. 
+
+## Markov Chain Monte Carlo (MCMC) techniques
+In addition, there would be computational problem involving in the posterior distribution. Here is an exact equation:
+
+$$\pi(\theta|y) = \frac{\pi(\theta) \times L(\theta|y)}{p(y)}. $$
+where the $\pi(\theta|y)$, $\pi(\theta)$ and $L(\theta|y)$ are corresponding to the posterior distribution, prior distribution and the likelihood function as the same as before. And the $p(y)$ that is the normalisation factor is the marginal density of the data $y$. Here $\theta$ is continuous, the $p(y)$ is calculated by $$\int_{\theta} \pi(\theta)L(\theta|y) d\theta.$$ It is easy to compute in low dimension but it is intractable in high dimension. So for dealing with this computational problem, we are using the Markov Chain Monte Carlo (MCMC) techniques that are able to stimulate a larger sample from the posterior distribution using only the non-normalised part of the posterior.
+
+Besides, for understanding the MCMC, we should interpret the idea for the Markov Chain. Here we are considering the continuous Markov Chain composed of 5 continuous variables. And there would be the Equilibrium distribution existing in the Markov Chain: $\underline{\pi} = \{ \pi_j, j \in S\}$ exits if $p_{ij}(t) \to \pi_j $ as $t \to \infty$ for each $j \in S$, where $\underline{\pi}$ is a probability distribution that does not depend on the initial state i. 
+
+# Arguments within this function
+In addition to choosing the number of chainsand the number of total iteration per chain, users can control the behaviour of the NUTS sampler, by using the \code{control} argument. The most important reason to use \code{control} is to decrease (or eliminate at best) the number of divergent transitions that cause a bias in the obtained posterior samples. Whenever you see the warning "There were x divergent transitions after warmup." you should really think about increasing \code{adapt_delta}. Increasing \code{adapt_delta} will slow down the sampler but will decrease the number of divergent transitions threatening the validity of your posterior samples. Thus, we normally choose the \code{adapt_delta} to be 0.999. In addition, there would be some warning messages to show that there were a lot transitions after warmup that exceeded the maximum treedepth.By increasing the parameter of\code{max_treedepth} with default value 15 in \code{control}, this problem could solved.Besides, if the Bulk Effective
+Sample Size(ESS) is too low, indicating posterior means and medians may be unreliable, we could increase the number of iteration to solve the problem. In general, the higher the ESS the better.We recommend that the bulk-ESS is greater than 100 times the number of chains. For example, when running five chains, this corresponds to having a rank-normalized effective sample size of at least 500. The default value of iteration is 2000 in \code{\link[brms]{brm} but for this function, 2000 is too low so we change the default value to 3000. There might be some warning messages and the users could find the solution from @StansWarnings .More information see \code{\link[rstan]{stan}} and @brms .
+
+## Setting a seed number
+Since the whole sampling process is random, it would cause different warning messages. Thus, we should choose a number by \code{seed} to choose a specific number before running the function. And according to previous description matching with the warning messages, we should do some adjustments. 
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+## For cmip5_temp1 ##
+x <- fit_bayes(cmip5_temp1)
+
+## For cmip5_temp2 ##
+y <- fit_bayes(cmip5_temp2)
+
+# There is no warning message, showing a great simulation.
+```
+
+If we set the seed number to be 19401206, the results would change differently and we also need adjust our function according to the warning messages(also see @StansWarnings).
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+## For cmip5_temp1 ##
+
+z <- fit_bayes(cmip5_temp1, seed = 19401206)
+
+# Here we got a warning message that the Bulk Effective Samples Size (ESS) is too 
+# low, thus, we should increase the number of iteration to 3500 and try again.
+
+z_1 <- fit_bayes(cmip5_temp1, seed = 19401206, iter = 3500)
+
+# But here is also a warning message about the divergent transisions and we should # increase the adapt_delta above 0.999. Next, we need try to increase the 
+# adapt_delta into 0.9999.
+
+z_2 <- fit_bayes(cmip5_temp1, seed = 19401206, iter = 3500, adapt_delta = 0.9999)
+
+# Successfully, there is no any warning messages.
+
+## For cmip5_temp2 ##
+w <- fit_bayes(cmip5_temp2, seed = 19401206)
+
+# We got a warning message and according to the message and the description 
+# before, we need to increase the number of max_treedepth. Then we would try 
+# the code with the 20 max_treedepth since the 15 is the default.
+
+w <- fit_bayes(cmip5_temp2, seed = 19401206,  max_treedepth = 20)
+
+# As the same as the warning message that we got before in z_1, we need to increase # the adapt_delta number into 0.9999 and try again.
+w <- fit_bayes(cmip5_temp2, seed = 19401206, max_treedepth = 20, adapt_delta = 0.9999)
+
+# Finally, there is no warning messages, interpreting a great simulation.
+```
+
+# Returns
+The return is an object (a list) of class 'climr_bayes' and 'bayes' containing the result of fitted model using the MCMC method from \code{brms::brm}, named \code{brm_object}. Besides, there are the estimates of standard deviations of random-effected factors and the residual, including their each standard error and 95% confidence interval shown by upper bond (i.e. 2.5%) and lower bond (i.e. 97.5%). 
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+# the call of 'fit_bayes'
+x$call
+y$call
+
+# the result of fitted model using the MCMC method from brms::brm
+x$brm_object
+y$brm_object
+
+# the estimates of standard deviations of random-effected factors and the residual
+x$coefs
+y$coefs
+
+# the standard errors of those estimates
+x$se
+y$se
+
+# the 95% confidence interval for those estimates
+x$ci
+y$ci
+```
+
+## Difference formats of showing the results
+
+There is a function named 'print.climr_bayes' for print the results.
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+print(x)
+print(y)
+```
+
+There is a function named 'summary.climr_bayes' for summary the results.
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+summary(x)
+summary(y)
+```
+
+There is a function named 'print.summary.climr_bayes' for print the summary of results.
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+print(summary(x))
+print(summary(y))
+```
+
+# Finite-population standard deviation
+This function also helps to produce the finite-population standard deviations for the random effects. In the previous result, the sigma (i.e. $\sigma$) interprets the super-population standard deviations.
+
+Finite-population standard deviation (i.e. $s$) is another type of standard deviation from the existing data or sample. That is why the $s$ is more precise than $\sigma$ with more information. For example, for $\alpha_{i}$ in the previous model, the $\sigma_{GCM}$ is the super-population standard deviation for GCM but its finite-population standard deviation is $s_{GCM}$ from
+$\sqrt[2]{\frac{1}{n_{GCM} -1} \displaystyle \sum_{i=1}^n(\alpha_i - \bar{\alpha})^2 }$ and $\bar{\alpha} = \frac{1}{n_{GCM}} \displaystyle \sum_{i=1}^n \alpha_i$
+with the nGCM is total number of GCM. More information about the superpopulation SDs and finite-population SDs could seen from @Gelman_2003 (Section 21.2).
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+summary(x$finite_sd)
+summary(y$finite_sd)
+```
+
+# Data Visualising
+We are setting the S3 plot method for visualising the posterior distribution from the Bayesian inference. The default plot is from the \code{bayesplot::mcmc_intervals} for showing the standard deviation of those random effects(i.e. $\sigma_{GCM}$, $\sigma_{RCP}$, $\sigma_{GCM:RCP}$ and $\sigma_{run}$). From those plots, we are clear to see the main sources of climate variability from those four factors.
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+plot(x)
+plot(y)
+```
+
+Besides, the above plots are showing the super-population standard deviations. The next plot are also from \code{bayesplot::mcmc_intervals} but showing the finite-population standard deviations.
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+plot(x, super_pop = FALSE)
+plot(y, super_pop = FALSE)
+```
+
+Furthermore, except those plots for posterior distributions, here are the plots for showing the prior distributions with respect to the value of A whose default value is 0.5. 
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+plot(x, which = 2)
+plot(y, which = 2)
+```
+
+## Summary
+Here are the table for the main arguments of the S3 plot method of the result of \code{fit_bayes}:
+
+| which | super_pop | result |
+|:------:|:------:|:------:|
+|   1  |  TRUE  |   posterior distribution for the super-population sds   |
+|  1  |  FALSE |   posterior distribution for the finite-population sds    | 
+|    2  |    TRUE |     prior distritbuion   | 
+|    2  |    FALSE |     NA   | 
+
+# References
+

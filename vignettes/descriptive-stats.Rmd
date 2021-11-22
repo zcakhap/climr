@@ -1,0 +1,53 @@
+---
+title: "Descriptive Statistics"
+author: "Yue Zhang and Paul Northrop"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Descriptive Statistics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: climr.bib
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+The 'plot.cmip5' function is an S3 plot method for an object of class 'cmip5'. In the other words, it is only applicable for the CMIP5 data containing the index, GCM and RCP; Users could adjust the plot whatever they want, like the pattern of points and colors.
+
+# Text to introduce the structure of the (CMIP5) data
+
+According to the description in @Taylor_2012, the CMIP5 is the fifth phase of the Coupled Model Intercomparison Project for understanding of past and future climate changes. The main experiments are long term (century time scale) integration and near-term integration (10-30 yr). In addition, there are four CMIP5 scenarios that are RCP 2.6, RCP 4.5, RCP 6.0 and RCP 8.5. However, there are some basic considerations for users of CMIP5 data, such as unforced variability and climate drift and bias correction. 
+
+The 'cmip5_temp1' data contains the mid 21st century global temperature projection data. At the same time, the 'cmip5_temp2' data contains late 21st century global temperature projection data. Both of them have 270 rows and 4 columns.Each row relates to a climate projection run from one of 38 different General Circulation Models (GCMs) under a particular Representative Concentration Pathway (RCP).Column 1 contains the anomaly of the mean global temperature between two different time period. For 'cmip5_temp1', it is the mean global temperature over the time period 2020-2049 relative to that over 1970-1999 and for 'cmip5_temp2', it is the mean global temperature over the time period 2020-2049 relative to that over 1970-1999 i.e. the latter subtracted from the former; Column 2 contains an abbreviation for the name of the climate modelling research group and the GCM; Column 3 contains the one of four RCPs; Column 4 is the simulation run number.
+
+
+```{r setup}
+library(climr)
+
+# showing data that stored in the pacake (climr)
+head(cmip5_temp1)
+head(cmip5_temp2)
+```
+
+# Explain the purpose of the plot
+
+According to @Northrop_2014, it is a scatter plot which is GCM against Index with a nice legend. The color and pattern of points would be classified by different scenarios. 
+
+From the plot, there are clear separations and tendencies for various GCMs and RCPs, showing the variability of climate.
+
+# Show codes to produce the plot
+
+```{r, fig.show='hold', fig.width = 3.45, fig.height = 3.45}
+plot(cmip5_temp1)
+plot(cmip5_temp2)
+```
+
+# References
+

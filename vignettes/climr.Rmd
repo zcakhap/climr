@@ -1,0 +1,65 @@
+---
+title: "Quantifying sources of uncertainty in projections of future climate"
+author: "Yue Zhang and Paul Northrop"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Quantifying sources of uncertainty in projections of 
+  future climate}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: climr.bib
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+The R package named *climr* is serving for analysis of variability of climate. Following the struture of @Northrop_2014, we uses the two-way random-effected ANOVA multi-model framework for finding out the source of climate uncertainty. First of all, we should know that within the model, the metadata in the package is from CMIP5 containing the index of temperature change, General Circulation Models (GCMs), Representative Concentration Pathway (RCP) and the number of runs. According to those information, we could fit the data into a ANOVA model.
+
+# Two-way Random-effected ANOVA Model
+
+Suppose $Y_{ijk}$; i = 1,...,$n_{GCM}$; j = 1,...,$n_{RCP}$; and k = 1,...,$K_{ij}$ be an index of change for GCM $i$, RCP $j$ and run $k$. For the CMIP5 data, $n_{GCM}$  = 38, $n_RCP$ = 4 and $K_{ij}$ varies from 0 to 10. Here is the statistical model:
+$$Y_{ijk} = \mu + \alpha_i + \beta_j + \gamma_{ij} + \epsilon_{ijk}, $$
+$$i = 1,...,n_{GCM}, j = 1,...,n_{RCP}, k = 1,...,K_{ij},$$
+$$\alpha_i \sim N(0,\sigma_{GCM}^2), \beta_j \sim N(0,\sigma_{RCP}^2), \gamma_{ij} \sim N(0,\sigma_{GCM:RCP}^2), \epsilon_{ijk} \sim N(0,\sigma_{R}^2).$$
+
+The $\mu$ is the overall mean change in the index over all GCMs and RCPs and is the fixed effect. And the  $\alpha_i$, $\beta_j$ and $\gamma_{ij}$ are the random effects which are normally distributed with mean 0 and corresponding variance. For example, the $\alpha_i$ interprets an adjustment to GCM $i$ with variance $\sigma_{GCM}^2$; With the same notation, $\beta_j$ interprets an adjustment to RCP $j$ with variance  $\sigma_{RCP}^2$ and the $\gamma_{ij}$ interprets interaction between the GCM $i$ and RCP $j$ that also indicates a RCP-specific additional adjustment for GCM $i$ with variance $\sigma_{GCM:RCP}^2$. Then $\epsilon_{ijk}$ is the error term that is also normally distributed with mean 0 and variance $\sigma_{R}^2$, meaning the residual variability between runs which also is the variability within the modeled system. All the random variables are independent in the assumption.
+
+The $\mu$ is the overall mean change in the index over all GCMs and RCPs. It is the coefficient of the model and also is the fixed effect. And the  $\alpha_i$, $\beta_j$ and $\gamma_{ij}$ are the random effects which are normally distributed with mean 0 and corresponding variance. This variance is super-population variance. Comparing to the fixed effect, random effects are sampled from large population and their variabilities are the focus of the analysis. Then, each random effects may tend to produce the value of index that are systematically higher or lower than the fixed effect (i.e. $\mu$). For example, for $\alpha_i$, it interprets an adjustment to GCM $i$ with variance $\sigma_{GCM}^2$. Different GCM varies the value of index around the $\mu$ and we use the adjustment in this model. The adjustment from $\mu$ is drawn from a $N(0,\sigma_{GCM}^2)$ distribution. If the $i$ is 1 which is the GCM1, the adjustment $\alpha_1$, ignoring the RCP and run, makes the value of index to be $\mu + \alpha_1$; With the same notation, $\beta_j$ interprets an adjustment to RCP $j$ with variance  $\sigma_{RCP}^2$ and the $\gamma_{ij}$ interprets interaction between the GCM $i$ and RCP $j$ that also indicates a RCP-specific additional adjustment for GCM $i$ with variance $\sigma_{GCM:RCP}^2$. Then $\epsilon_{ijk}$ is the error term that is also normally distributed with mean 0 and variance $\sigma_{R}^2$, meaning the residual variability between runs which also is the variability within the modeled system. All the random variables are independent in the assumption. Therefore, from this equation, we are considering the effects from the GCM, RCP, their interaction and run.
+
+However, for analysing the source of climate uncertainty, we use this model to find out the estimates of $\mu, \sigma_{GCM}, \sigma_{RCP}, \sigma_{GCM:RCP}, \sigma_{R}$ with the corresponding standard errors and 95\% confidence intervals. From the @Northrop_2014, we use two different inferential statistical methods to obtain those estimates from a frequentist inference and a Bayesian inference, respectively. One is using the restricted maximum likelihood (REML) estimation and the other is by using the Bayesian inference with the Markov chain Monte Carlo (MCMC) techniques. 
+
+# Restricted Maximum Likelihood (REML) Estimation
+
+Due to the unbalance of data and the random variables in model, we would Use the restricted maximum likelihood (REML) estimation. The parameters are  $\mu, \sigma_{GCM}, \sigma_{RCP}, \sigma_{GCM:RCP}$ and $\sigma_{R}$ that are treated as $\theta$:
+$$(\mu,\sigma_{GCM},\sigma_{RCP},\sigma_{GCM:RCP},\sigma_{R}) = \theta$$
+
+Using the simple maximum likelihood maximise the likelihood function of $\theta$ (i.e. $L(\theta)$) with respect to $\theta$ but the REML would treat the fixed-effect variable ($\mu$) and the random-effect variables ($\sigma_{GCM}, \sigma_{RCP}, \sigma_{GCM:RCP}, \sigma_{R}$) separately and estimated the previous one firstly. 
+
+# Bayesian Inference
+
+Comparing with the REML estimation, the Bayesian analysis may be preferable since the information about $\sigma_{RCP}$ is weak with only four scenarios, may causing a weakly information prior @Gelman_2006. The weakly information prior would encapsulate basic constrains on the parameters and let the likelihood dominate the posterior distribution. From the Bayesian analysis, the previous parameter $\theta$ is treated as a random variable. There is a prior distribution, $\pi(\theta)$, indicating the uncertainty about the $\theta$ in the absence of the data $y$, and a likelihood function, $L(\theta|y)$,indicating the probability density of $y$ in a function of $\theta$. According to the Bayesian inference, the posterior distribution, $\pi(\theta|y)$, is proportional to the production of prior distribution, $\pi(\theta)$, and likelihood function, $L(\theta|y)$ : $$\pi(\theta|y) \displaystyle \propto \pi(\theta) \times L(\theta|y) $$
+
+After dealing with the samples by the Markov Chain Monte Carlo (MCMC) techniques, these samples could make a better evaluation for the posterior distribution, e.g. mean, median and percentiles. And from @Gelman_2006 and @Northrop_2014, the prior distribution that we should choose is the half-Cauchy ($A$) distribution, as there are only limited information from the existing data. The probability density function (pdf) of the half-Cauchy ($A$) distribution is:
+$$\pi(\theta) = \frac{2}{\pi A} \left( 1 + \frac{\theta ^2}{A^2}\right)^{-1} , \theta > 0$$
+The value of $A$ would influence the posterior distribution for $\theta$ to place high probability on a realistic range. And as the $\theta$ rises, the pdf of model would decrease slowly in order to prevent an undue effects of the prior distribution from a larger data than anticipated value of $\theta$.
+
+## Markov Chain Monte Carlo (MCMC) techniques
+In addition, there would be computational problem involving in the posterior distribution. Here is an exact equation:
+
+$$\pi(\theta|y) = \frac{\pi(\theta) \times L(\theta|y)}{p(y)}. $$
+where the $\pi(\theta|y)$, $\pi(\theta)$ and $L(\theta|y)$ are corresponding to the posterior distribution, prior distribution and the likelihood function as the same as before. And the $p(y)$ that is the normalisation factor is the marginal density of the data $y$. Here $\theta$ is continuous, the $p(y)$ is calculated by $$\int_{\theta} \pi(\theta)L(\theta|y) d\theta.$$ It is easy to compute in low dimension but it is intractable in high dimension. So for dealing with this computational problem, we are using the Markov Chain Monte Carlo (MCMC) techniques that are able to stimulate a larger sample from the posterior distribution using only the non-normalised part of the posterior.
+
+Besides, for understanding the MCMC, we should interpret the idea for the Markov Chain. Here we are considering the continuous Markov Chain composed of 5 continuous variables. And there would be the Equilibrium distribution existing in the Markov Chain: $\underline{\pi} = \{ \pi_j, j \in S\}$ exits if $p_{ij}(t) \to \pi_j $ as $t \to \infty$ for each $j \in S$, where $\underline{\pi}$ is a probability distribution that does not depend on the initial state i. 
+
+# Notes
+The RCPs metioned before are only applicable for CMIP5. For CMIP6, there are SSPs instead of RCPs and we also treat SSPs in the same way as RCPs when analysing the CMIP6.
+
+# References
+
